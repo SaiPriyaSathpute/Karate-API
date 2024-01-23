@@ -21,9 +21,18 @@ const gitOperation = async (url:string,destinationFolder:string) => {
     }
 };
 
-const runJavaJarCommand = async()=>{
+const runJavaJarCommand = async(proxyUrl, proxyUsername, proxyPassword)=>{
+    let cmd:string;
+    if(proxyUrl!=null)
+    {
+        cmd=`java -DproxyUrl=${proxyUrl} -DproxyUsername=${proxyUsername} -DproxyPassword=${proxyPassword} -jar karate.jar ./feature-files-repo/Feature-files`;
+    }
+    else
+    {
+        cmd=`java -jar karate.jar ./feature-files-repo/Feature-files`;
+    }
     try {
-        const { stdout, stderr } = await execPromise(`java -jar karate.jar ./feature-files-repo/Feature-files`);
+        const { stdout, stderr } = await execPromise(cmd);
         console.log(stdout);
         console.log(stderr);
         return {
@@ -47,11 +56,21 @@ const zipDirectory = async (sourceDir, outputFilePath) => {
 fastify.post('/getReport', async (req, reply) => {
     const jsonData:any= req.body;
     const url:string=jsonData.url;
-    console.log(url);
+    let proxyUrl:string, proxyUsername:String, proxyPassword:String;
+    if(jsonData.proxy){
+        proxyUrl=jsonData.proxy.url;
+        proxyUsername=jsonData.proxy.username;
+        proxyPassword=jsonData.proxy.password;
+    }
+    else{
+        proxyUrl=null;
+        proxyUsername=null;
+        proxyPassword=null;
+    }
     const destinationFolder="feature-files-repo";
     try {
         await gitOperation(url,destinationFolder);
-        const javaCommandResult = await runJavaJarCommand();
+        const javaCommandResult = await runJavaJarCommand(proxyUrl, proxyUsername, proxyPassword);
         fs.rm('feature-files-repo',{ recursive: true, force: true },(err)=>{
             if(err){
             console.log(err);
